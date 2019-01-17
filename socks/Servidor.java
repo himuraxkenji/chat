@@ -10,8 +10,11 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.Inet4Address;
+import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
 
 public class Servidor  {
 
@@ -61,7 +64,10 @@ class MarcoServidor extends JFrame implements Runnable{
 			
 			PaqueteEnvio  paqueteRecibido; 
 			
+			ArrayList <String> listaIp = new ArrayList<String>();
+			
 			while (true) {	
+				
 				Socket miSocket = servidor.accept();
 				
 //				DataInputStream flujoEntrada = new DataInputStream(miSocket.getInputStream());
@@ -79,20 +85,57 @@ class MarcoServidor extends JFrame implements Runnable{
 				ip  = paqueteRecibido.getIp();
 				
 				mensaje = paqueteRecibido.getMensaje();
+			
+				if (!mensaje.equals(" online")) {
 				
-				areatexto.append("\n" + nick + " : " + mensaje + " para " + ip);
+					areatexto.append("\n" + nick + " : " + mensaje + " para " + ip);
+					
+					Socket enviaDestinatario = new Socket(ip, 60121);
+					
+					ObjectOutputStream paqueteReenvio = new ObjectOutputStream(enviaDestinatario.getOutputStream());
+					
+					paqueteReenvio.writeObject(paqueteRecibido);
+					
+					paqueteReenvio.close();
+					
+					enviaDestinatario.close();
+					
+					miSocket.close();
+					
+				}else {
+					
+					// ------------------- DETECTA ONLINE -----------------------
+					
+					InetAddress localizacion = miSocket.getInetAddress();
+					
+					String ipCliente = localizacion.getHostAddress();
+					
+					System.out.println("Online: " + ipCliente);
+					
+					listaIp.add(ipCliente);
+						
+					paqueteRecibido.setDireccionesIp(listaIp);
+					
+					for (String direccionIP: listaIp) {
+						
+						Socket enviaDestinatario = new Socket(direccionIP, 60121);
+						
+						ObjectOutputStream paqueteReenvio = new ObjectOutputStream(enviaDestinatario.getOutputStream());
+						
+						paqueteReenvio.writeObject(paqueteRecibido);
+						
+						paqueteReenvio.close();
+						
+						enviaDestinatario.close();
+						
+						miSocket.close();
+						
+					}
+					
+					// ----------------------------------------------------------			
+				}
 				
-				Socket enviaDestinatario = new Socket(ip, 60121);
 				
-				ObjectOutputStream paqueteReenvio = new ObjectOutputStream(enviaDestinatario.getOutputStream());
-				
-				paqueteReenvio.writeObject(paqueteRecibido);
-				
-				paqueteReenvio.close();
-				
-				enviaDestinatario.close();
-				
-				miSocket.close();
 			}
 				
 		} catch (IOException e) {

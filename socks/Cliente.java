@@ -4,6 +4,8 @@ package socks;
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -12,6 +14,7 @@ import java.io.Serializable;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 
 import javax.swing.*;
 
@@ -33,6 +36,8 @@ class MarcoCliente extends JFrame{
 	
 	public MarcoCliente(){
 		
+		super("Chat");
+		
 		setBounds(600,300,280,350);
 				
 		LaminaMarcoCliente milamina=new LaminaMarcoCliente();
@@ -40,7 +45,43 @@ class MarcoCliente extends JFrame{
 		add(milamina);
 		
 		setVisible(true);
+		
+		addWindowListener(new EnvioOnline());
+		
+		
+		
 		}	
+	
+}
+
+// ------------- Envio de señal online ---------------------------------------------
+
+class EnvioOnline extends WindowAdapter{
+	
+	public void windowOpened(WindowEvent ev) {
+		
+		try {
+			
+			Socket miSocket = new Socket("192.168.1.240", 60120);
+			
+			PaqueteEnvio datos = new PaqueteEnvio();
+			
+			datos.setMensaje(" online");
+			
+			ObjectOutputStream flujoSalida = new ObjectOutputStream(miSocket.getOutputStream());
+			
+			flujoSalida.writeObject(datos);
+			
+			miSocket.close();
+			
+		}catch (Exception e) {
+			
+		}
+		
+		
+	}
+	
+	
 	
 }
 
@@ -48,19 +89,30 @@ class LaminaMarcoCliente extends JPanel implements Runnable{
 	
 	public LaminaMarcoCliente(){
 		
+		String nickUsuaString = JOptionPane.showInputDialog("Nick: ");
 		
-		nick = new JTextField(5);
+		JLabel nNick =  new JLabel("Nick: ");
+		
+		add(nNick);
+		
+		nick = new JLabel();
+		
+		nick.setText(nickUsuaString);
 		
 		add(nick);
 		
 	
-		JLabel texto=new JLabel("-Chat-");
+		JLabel texto=new JLabel(" Online: ");
 		
 		add(texto);
 
-		ip = new JTextField(8);
+		ip = new JComboBox();
+		
+		
 		
 		add(ip);
+		
+//		ip.addItem("192.168.1.240");
 		
 		campoChat = new JTextArea(12,20);
 		
@@ -92,7 +144,7 @@ class LaminaMarcoCliente extends JPanel implements Runnable{
 			campoChat.append("\n" + campo1.getText());
 			
 			try {
-				Socket miSocket = new Socket("192.168.1.6", 60120);
+				Socket miSocket = new Socket("192.168.1.240", 60120);
 				
 //				DataOutputStream flujoSalida = new DataOutputStream(miSocket.getOutputStream());
 //				
@@ -106,7 +158,7 @@ class LaminaMarcoCliente extends JPanel implements Runnable{
 				
 				datos.setNick(nick.getText());
 				
-				datos.setIp(ip.getText());
+				datos.setIp(ip.getSelectedItem().toString());
 				
 				datos.setMensaje(campo1.getText());
 				
@@ -131,9 +183,12 @@ class LaminaMarcoCliente extends JPanel implements Runnable{
 		
 	}
 		
-		
-		
-	private JTextField campo1, nick, ip;
+	
+	private JLabel nick;
+	
+	private JTextField campo1;
+	
+	private JComboBox ip;
 	
 	private JButton miboton;
 	
@@ -159,7 +214,28 @@ class LaminaMarcoCliente extends JPanel implements Runnable{
 				
 				paqueteRecibido =  (PaqueteEnvio) flujoEntrada.readObject();
 				
-				campoChat.append("\n" + paqueteRecibido.getNick() + ": " + paqueteRecibido.getMensaje());
+				if (!paqueteRecibido.getMensaje().equals(" online")) {
+					
+					campoChat.append("\n" + paqueteRecibido.getNick() + ": " + paqueteRecibido.getMensaje());
+					
+				}else {
+				
+//					campoChat.append("\n" + paqueteRecibido.getDireccionesIp());
+					
+					ArrayList<String> menuIP = new ArrayList<String>();
+					
+					menuIP = paqueteRecibido.getDireccionesIp();
+					
+					ip.removeAllItems();
+					
+					for (String dir : menuIP) {
+						
+						ip.addItem(dir);
+												
+					}
+					
+				}
+				
 				
 			}
 			
@@ -175,6 +251,17 @@ class LaminaMarcoCliente extends JPanel implements Runnable{
 class PaqueteEnvio implements Serializable{
 	
 	private String nick, ip, mensaje;
+		
+	private ArrayList<String> direccionesIp = new ArrayList<String>();
+	
+	
+	public ArrayList<String> getDireccionesIp() {
+		return direccionesIp;
+	}
+
+	public void setDireccionesIp(ArrayList<String> direccionesIp) {
+		this.direccionesIp = direccionesIp;
+	}
 
 	public String getNick() {
 		return nick;
